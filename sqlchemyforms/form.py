@@ -1,6 +1,5 @@
 
 from exceptions import FormException
-from field import FieldFactory
 
 class Form(object):
     def __init__(self, fields = {}):
@@ -15,7 +14,7 @@ def as_form(orig_class):
 
     def gen(decorated_self, fields = []):
 
-        form = Form(orig_class.factory.generate(decorated_self, fields))
+        form = Form(orig_class.__factory__.generate(decorated_self, fields))
 
         return form
 

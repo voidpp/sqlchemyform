@@ -18,7 +18,7 @@ class Widget(object):
             yield (name, getattr(self.data, name))
 
     def __repr__(self):
-        return "<Widget(name='%(name)s', type='%(type)s', value='%(value)s')>" % self.data.__dict__
+        return "<Widget(name=%(name)s, type=%(type)s, value=%(value)s)>" % self.data.__dict__
 
 class SelectWidget(Widget):
     def __init__(self, key_field, value_fields, multiple = False):
@@ -31,5 +31,6 @@ class SelectWidget(Widget):
         super(SelectWidget, self).setup(name, value, provider)
         self.data.options = provider.get_data(self)
 
-
+    def __repr__(self):
+        return "<Widget(name=%(name)s, type=%(type)s, value=%(value)s, options=%(options)s, multiple=%(multiple)r)>" % self.data.__dict__
 
