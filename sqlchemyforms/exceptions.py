@@ -1,0 +1,4 @@
+
+
+class FormException(Exception):
+	pass
