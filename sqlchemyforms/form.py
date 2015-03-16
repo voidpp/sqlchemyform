@@ -1,23 +1,80 @@
 
-from exceptions import FormException
+#from sqlchemyforms.sqlchemyforms.exceptions import FormException
+from tools import Storage
+from widget_factory import WidgetFactory
 
-class Form(object):
-    def __init__(self, fields = {}):
+class Form(Storage):
+
+    widget_factory = WidgetFactory()
+
+    def __init__(self,
+                 model,
+                 db,
+                 action,
+                 method = 'POST',
+                 fields = [],
+                 name = ''):
+        self.model = model
+        self.db = db
+        self.action = action
+        self.method = method
         self.fields = fields
+        self.name = name
+        self.errors = {}
 
-    def add_field(self, name, type):
-        self.fields[name] = type
+        self.widgets = []
+        self.__widgets_by_name = {}
+        self.iterables = ['name', 'action', 'method', 'widgets', 'errors']
 
+    def __iter__(self):
+        for field in self.iterables:
+            yield field
 
-# add generate_form static function to the sqlalchemy.orm.Table classes
-def as_form(orig_class):
+    def generate_widgets(self, instance):
+        self.widgets = self.widget_factory.generate(instance, self.model.form_field_definitions, self.db, self.fields)
+        for widget in self.widgets:
+            self.__widgets_by_name[widget.name] = widget
 
-    def gen(decorated_self, fields = []):
+    def accept(self, data, instance):
+        self.generate_widgets(instance)
 
-        form = Form(orig_class.__factory__.generate(decorated_self, fields))
+        if data is None:
+            return False
 
-        return form
+        data_fields = []
 
-    orig_class.generate_form = gen
+        for name in self.__widgets_by_name:
+            if name in data:
+                data_fields.append(name)
 
-    return orig_class
+        if not len(data_fields):
+            return False
+
+        changed_fields = []
+
+        for name in data_fields:
+            widget = self.__widgets_by_name[name]
+
+            # validate
+            widget.value = data[name]
+            errors = widget.validate()
+            if len(errors):
+                self.errors[name] = errors
+
+            # check change
+            value = getattr(instance, name)
+            if value != widget.value:
+                changed_fields.append(name)
+
+        if len(self.errors):
+            return False
+
+        # update instance
+        for name in data_fields:
+            field = self.__widgets_by_name[name].field
+            value = field.format_value(data[name])
+            setattr(instance, name, value)
+
+        self.db.add(instance)
+
+        return True

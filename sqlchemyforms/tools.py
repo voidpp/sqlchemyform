@@ -1,41 +1,28 @@
 
-import sqlalchemy
-from json import JSONEncoder
+from json import JSONEncoder as orig_encoder
 
-def orm_repr(orig_class):
+class JSONEncoder(orig_encoder):
+    """
+        Encode a lots of types data, what are seems to be iterable
+        Also have a custom circular referencing avoiding mechanism, because of the SqlAlchemy's orm classes may have backref or sg
+    """
+    def __init__(self, *args, **kwargs):
+        kwargs['check_circular'] = False
+        super(JSONEncoder, self).__init__(*args, **kwargs)
+        self._visited = []
 
-    def _iter(self):
-        for name in dir(orig_class):
-            attr = getattr(orig_class, name)
-            if type(attr) is not sqlalchemy.orm.attributes.InstrumentedAttribute:
-                continue
-            yield (name, getattr(self, name))
-
-    def _repr(self):
-        data = dict(self)
-        return "<%s(%s)>" % (self.__class__.__name__, ', '.join(["%s=%s" % (name, data[name]) for name in data]))
-
-    def _eq(self, other):
-        if other is None:
-            return False
-        return dict(self) == dict(other)
-
-    orig_class.__repr__ = _repr
-    orig_class.__iter__ = _iter
-    orig_class.__eq__ = _eq
-    return orig_class
-
-
-class JSONEncoder(JSONEncoder):
     def default(self, o):
+        if o in self._visited:
+            return '[...]'
+        self._visited.append(o)
+
         if hasattr(o, '__iter__'):
             return dict(o)
 
         if hasattr(o, '__dict__'):
             return o.__dict__
 
-        print o # FIXME: handle this case
-        return None
+        return str(o)
 
 
 # FIXME: move to the right place...!  (maybe sg like CompositeWidget...)
@@ -63,3 +50,13 @@ def check_composite_widget_struct(value, required):
 
     return check_node(value, required)
 
+
+class Storage(dict):
+    def __getattr__(self, key):
+        return self[key]
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __hasattr__(self, key):
+        return key in self

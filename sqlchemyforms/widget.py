@@ -1,36 +1,32 @@
 
+from tools import Storage
 from abc import abstractmethod
 
-class Data(object):
-    pass
+class Widget(Storage):
+    def __init__(self, name, type, value = None):
+        self.name = name
+        self.type = type
+        self.value = value
+        self.iterable = ['name', 'type', 'value']
 
-class Widget(object):
-    def __init__(self, type = None):
-        self.data = Data()
-        self.data.type = type
-
-    def setup(self, name, value, provider):
-        self.data.name = name
-        self.data.value = value
+    def validate(self):
+        return self.field.validate(self.value)
 
     def __iter__(self):
-        for name in self.data.__dict__:
-            yield (name, getattr(self.data, name))
+        for field in self.iterable:
+            yield field
 
     def __repr__(self):
-        return "<Widget(name=%(name)s, type=%(type)s, value=%(value)s)>" % self.data.__dict__
+        return "<Widget(name=%(name)s, type=%(type)s, value=%(value)s)>" % self
 
 class SelectWidget(Widget):
-    def __init__(self, key_field, value_fields, multiple = False):
-        super(SelectWidget, self).__init__(type = 'select')
-        self.key_field = key_field
-        self.value_fields = value_fields
-        self.data.multiple = multiple
+    html_type = 'select'
 
-    def setup(self, name, value, provider):
-        super(SelectWidget, self).setup(name, value, provider)
-        self.data.options = provider.get_data(self)
+    def __init__(self, *args, **kwargs):
+        super(SelectWidget, self).__init__(*args, **kwargs)
+        self.multiple = False
+        self.options = None
+        self.iterable.extend(['multiple', 'options'])
 
     def __repr__(self):
-        return "<Widget(name=%(name)s, type=%(type)s, value=%(value)s, options=%(options)s, multiple=%(multiple)r)>" % self.data.__dict__
-
+        return "<SelectWidget(name=%(name)s, type=%(type)s, value=%(value)s, options=%(options)s, multiple=%(multiple)r)>" % self

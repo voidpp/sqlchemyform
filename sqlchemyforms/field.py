@@ -1,35 +1,26 @@
 
-import sqlalchemy
-from sqlalchemy.orm.relationships import RelationshipProperty
 
-# makes a connection between the ORM based classes and the HTML Form
-class FieldBase(object):
-    # custom keys for generate (HTML) fields
-    __keys__ = [
-        # TODO
-        'represent',
+class Field(object):
+    def __init__(self, type, validators = None):
+        self.type = type
+        """
+            Q: Why the default param is [] for validators In the function list?
+            A: 'cause some weird python shit in all the Field instance created without validator the instance of the validator member will be the _same_
+        """
+        self.validators = validators if validators else []
 
-        # TODO
-        'widget',
-    ]
+    def format_value(self, value):
+        for validator in self.validators:
+            value = validator.format_value(value, self.type)
 
-    def __init__(self, kwargs):
-        for key in self.__keys__:
-            setattr(self, key, None)
-            if key in kwargs:
-                setattr(self, key, kwargs[key])
-                # need to remove the custom keys from the kwargs before pass to the other parent's ctor
-                kwargs.pop(key, None)
+        return value
 
+    def validate(self, value):
+        errors = []
 
-class Field(sqlalchemy.Column, FieldBase):
+        for validator in self.validators:
+            res = validator.check(value)
+            if len(res):
+                errors.append(res)
 
-    def __init__(self, *args, **kwargs):
-        FieldBase.__init__(self, kwargs)
-        sqlalchemy.Column.__init__(self, *args, **kwargs)
-
-class RelationshipField(RelationshipProperty, FieldBase):
-
-    def __init__(self, *args, **kwargs):
-        FieldBase.__init__(self, kwargs)
-        RelationshipProperty.__init__(self, *args, **kwargs)
+        return errors
