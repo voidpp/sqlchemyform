@@ -2,12 +2,14 @@
 from sf_exceptions import CrudException
 from form import Form
 from table.data_table import DataTable
+from sqlchemyforms.tools import Storage
 
 class CrudRequest(object):
-    def __init__(self, path, get, post, db):
+    def __init__(self, path, get, post, query, db):
         self.path = path
         self.get = get
         self.post = post
+        self.query = query
         self.db = db
 
 class CrudBase(object):
@@ -35,14 +37,34 @@ class CrudBase(object):
 
         return instance
 
+    def call(self, request, command):
+        func = getattr(self, command)
+
+        result = func(request)
+
+        success = True
+        if type(result) is tuple:
+            data = result[0]
+            success = result[1]
+        else:
+            data = result
+
+        return Storage(
+            method = command,
+            table = str(self.model.__table__),
+            data = data,
+            primary_key = self.search_primary_key().key,
+            success = success,
+        )
+
     def do_create(self, request):
         instance = self.model()
 
-        form = Form(self.model, request.db, request.path)
+        form = Form(self.model, request.db, '%s?%s' % (request.path, request.query))
 
-        form.accept(request.post.data, instance)
+        res = form.accept(request.post, instance)
 
-        return form
+        return (form, res)
 
     def do_read(self, request):
 
@@ -52,17 +74,18 @@ class CrudBase(object):
 
         instance = self.__fetch_instance(request)
 
-        form = Form(self.model, request.db, request.path)
+        form = Form(self.model, request.db, '%s?%s' % (request.path, request.query))
 
-        form.accept(request.post.data, instance)
+        res = form.accept(request.post, instance)
 
-        return form
+        return (form, res)
 
     def do_delete(self, request):
 
         instance = self.__fetch_instance(request)
 
-        request.db.delete(instance)
+        if request.post is not None:
+            request.db.delete(instance)
 
         return True
 

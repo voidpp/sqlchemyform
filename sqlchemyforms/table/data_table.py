@@ -1,6 +1,8 @@
 
 from sqlchemyforms.tools import Storage
 
+from sqlchemyforms.form import Form
+
 class DataTable(object):
     def __init__(self, crud, request):
         self.crud = crud
@@ -34,21 +36,24 @@ class DataTable(object):
         rpp = self.model.table_definitions.row_per_page or 20
         page = 1
 
-
-
         if 'page' in self.request.get:
             page = int(self.request.get['page'])
 
-
-
     def fetch(self):
-        result = Storage(columns = [], rows = [])
+        result = Storage(
+            columns = [],
+            rows = [],
+        )
 
         self.sortable_fields = {}
         self.filterable_fields = {}
 
+        form = Form(self.model, self.request.db, self.request.path)
+        form.generate_widgets(self.model())
+
         for col in self.model.table_definitions.columns:
             result.columns.append(dict(
+                type = form.widgets[col.type.key].type,
                 name = col.type.key,
                 sortable = col.sortable
             ))

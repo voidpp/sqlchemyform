@@ -19,7 +19,7 @@ class IsInSetValidator(SimpleValidator):
 
         for val in value:
             if val not in exists:
-                return 'value not in set'
+                return 'value (%s) not in set (%s)' % (val, exists)
 
         return ''
 
@@ -28,6 +28,8 @@ class IsInSetValidator(SimpleValidator):
 
         widget.options = self._values
         widget.multiple = self.multiple
+        vtype = type(self._values.keys()[0]) if len(self._values) else str
+        widget.value_type = 'number' if vtype is long or vtype is int else 'string'
 
     def fetch_available_values(self, db):
         self._values = self.values() if hasattr(self.values, '__call__') else self.values

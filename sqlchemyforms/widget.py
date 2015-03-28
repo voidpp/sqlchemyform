@@ -3,11 +3,16 @@ from tools import Storage
 from abc import abstractmethod
 
 class Widget(Storage):
-    def __init__(self, name, type, value = None):
+    def __init__(self, name, type, value = None, required = False, default = None):
         self.name = name
         self.type = type
         self.value = value
-        self.iterable = ['name', 'type', 'value']
+        self.value_type = ''
+        self.required = required
+        self.default = default
+        self.regexp = None
+        self.error_message = None
+        self.iterable = ['name', 'type', 'value', 'value_type', 'required', 'default', 'regexp', 'error_message']
 
     def validate(self):
         return self.field.validate(self.value)

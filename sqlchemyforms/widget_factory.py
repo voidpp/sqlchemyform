@@ -5,6 +5,8 @@ from widget import Widget, SelectWidget
 from validators.simple import SimpleValidator
 from validators.is_in_set import IsInSetValidator
 
+from copy import copy
+
 class WidgetFactory(object):
 
     def __init__(self):
@@ -18,7 +20,7 @@ class WidgetFactory(object):
         }
 
     def __get_enum_widget_info(self, field):
-        field.validators.append(IsInSetValidator(field.type.type.enums))
+        field.validators.append(IsInSetValidator({val:val for val in field.type.type.enums}))
         return SelectWidget, 'select'
 
     def gen_for_basic_types(self, field):
@@ -35,43 +37,59 @@ class WidgetFactory(object):
 
     def generate(self, instance, form_field_definitions, db, fields_to_gen = []):
 
-        widgets = []
+        widgets = {}
 
         for field in form_field_definitions:
+
             attr = field.type
             name = attr.key
 
             if len(fields_to_gen) and name not in fields_to_gen:
                 continue
 
-            widget_type = Widget
-            html_type = 'text'
+            if not hasattr(field, 'html_type'):
+                widget_type = Widget
+                html_type = 'text'
 
-            # try guessing widget type by validators
-            for validator in field.validators:
-                if hasattr(validator, 'widget_type'):
-                    widget_type = validator.widget_type
-                    break
+                # try guessing widget type by validators
+                for validator in field.validators:
+                    if hasattr(validator, 'widget_type'):
+                        widget_type = validator.widget_type
+                        break
 
-            if hasattr(widget_type, 'html_type'):
-                html_type = widget_type.html_type
+                if hasattr(widget_type, 'html_type'):
+                    html_type = widget_type.html_type
+
+                # create validator if there is no one
+                if not len(field.validators):
+                    widget_type, html_type = self.gen_for_basic_types(field)
+
+                if hasattr(attr, 'primary_key') and attr.primary_key:
+                    html_type = 'hidden'
+
+                field.html_type = html_type
+                field.widget_type = widget_type
 
             # get value from model instance
             value = getattr(instance, name)
 
-            # create validator if there is no one
-            if not len(field.validators):
-                widget_type, html_type = self.gen_for_basic_types(field)
+            default = None
+            required = False
 
-            if hasattr(attr, 'primary_key') and attr.primary_key:
-                html_type = 'hidden'
+            if hasattr(attr, 'nullable'):
+                required = not getattr(attr, 'nullable')
 
-            widget = widget_type(name, html_type, value)
+            if hasattr(attr, 'default'):
+                default = getattr(attr, 'default')
+                if default:
+                    default = default.arg
+
+            widget = field.widget_type(name, field.html_type, value, required = required, default = default )
             widget.field = field
 
             for validator in field.validators:
                 validator.process_widget(widget, db)
 
-            widgets.append(widget)
+            widgets[name] = widget
 
         return widgets
