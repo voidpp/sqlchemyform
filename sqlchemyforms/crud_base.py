@@ -1,5 +1,5 @@
 
-from sf_exceptions import CrudException
+from exceptions import CrudException
 from form import Form
 from table.data_table import DataTable
 from sqlchemyforms.tools import Storage
