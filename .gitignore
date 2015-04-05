@@ -1,2 +1,3 @@
 *.pyc
 Sqlchemyforms.egg-info
+dist
